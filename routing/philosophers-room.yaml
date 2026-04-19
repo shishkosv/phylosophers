@@ -1,0 +1,124 @@
+room:
+  name: philosophers-room
+  channel: telegram
+  purpose: shared routing and communication policy for the philosopher multi-agent room
+
+replyBehavior:
+  defaultMode: reply_to_current
+  policy: prefer-native-reply
+  notes:
+    - When responding to a specific incoming Telegram message, prefer native reply behavior rather than an unthreaded standalone message.
+    - Use standalone messages only for room-wide summaries, moderator resets, or when no single triggering message is the clear anchor.
+
+routing:
+  classifyIncomingAs:
+    - directed_to_freud
+    - directed_to_marcus
+    - directed_to_aristotle
+    - directed_to_all_philosophers
+    - directed_to_another_human
+    - requires_moderator_summary
+    - no_response_needed
+
+  speakerSelection:
+    default: choose_one_if_clearly_best_suited
+    chooseTwoOnlyWhen:
+      - real contrast is valuable
+      - complement is valuable
+    chooseAllThreeOnlyWhen:
+      - user explicitly asks for comparison
+      - moderator wants a panel
+      - topic is broad and philosophical
+
+  pairings:
+    - speakers: [freud, marcus]
+      useWhen: conflict inside versus discipline over judgment
+    - speakers: [freud, aristotle]
+      useWhen: motive versus virtue and character
+    - speakers: [marcus, aristotle]
+      useWhen: resilience versus practical ethical action
+
+speakerMapping:
+  freud:
+    useFor:
+      - sabotage
+      - insecurity
+      - jealousy
+      - love
+      - attachment
+      - shame
+      - recurring conflict
+      - irrational reactions
+      - dreams
+      - contradictions
+  marcus:
+    useFor:
+      - anxiety
+      - uncertainty
+      - anger
+      - offense
+      - stress
+      - fear_of_outcome
+      - discipline
+      - patience
+      - dealing_with_other_people
+  aristotle:
+    useFor:
+      - friendship
+      - justice
+      - honesty
+      - habit_building
+      - ambition
+      - courage
+      - moderation
+      - decision_making
+      - how_to_live_well_in_practice
+
+moderation:
+  humanPriority: true
+  rules:
+    - If a human asks a direct question, prioritize answering that question.
+    - Do not allow long agent-only loops while humans wait.
+    - Prevent repeated rebuttal chains and noisy overlap.
+    - Prefer one speaker by default.
+    - Suppress speakers whose contribution would mostly repeat an existing point.
+
+repetitionControl:
+  questions:
+    - Has another speaker already made my core point?
+    - Can I add a clearly different angle?
+    - Is silence better than redundancy?
+  ifMostlyRepetitive:
+    - shorten_drastically
+    - shift_to_distinct_nuance
+    - remain_silent_if_allowed
+
+responseCaps:
+  freud: 100
+  marcus: 100
+  aristotle: 100
+  moderator_summary: 100
+
+summaries:
+  produceWhen:
+    - discussion becomes long
+    - discussion becomes tangled
+    - discussion becomes repetitive
+    - a human asks for summary or arbitration
+  include:
+    - current_issue
+    - agreement
+    - disagreement
+    - unresolved_question
+
+turnDiscipline:
+  avoid:
+    - all_agents_speaking_every_turn
+    - repeated_rebuttal_chains
+    - long_speeches
+    - noisy_overlap
+  goal:
+    - clarity
+    - quality
+    - distinct_contributions
+    - readable_room_flow

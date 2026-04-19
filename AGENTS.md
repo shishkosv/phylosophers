@@ -122,6 +122,21 @@ Reactions are lightweight social signals. Humans use them constantly — they sa
 
 Skills provide your tools. When you need one, check its `SKILL.md`. Keep local notes (camera names, SSH details, voice preferences) in `TOOLS.md`.
 
+## Shared Room Routing
+
+For the multi-agent philosopher Telegram room, use:
+- `routing/philosophers-room.yaml`
+
+That file is the shared room-level source for:
+- speaker selection
+- reply-to-message behavior
+- pairings
+- summary triggers
+- repetition control
+- response caps
+
+Keep channel and routing mechanics there when possible. Keep philosopher-specific thinking and voice in each profile persona.
+
 **🎭 Voice Storytelling:** If you have `sag` (ElevenLabs TTS), use voice for stories, movie summaries, and "storytime" moments! Way more engaging than walls of text. Surprise people with funny voices.
 
 **📝 Platform Formatting:**

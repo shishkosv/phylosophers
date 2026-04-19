@@ -70,6 +70,7 @@ Skills are shared. Your setup is yours. Keeping them apart means you can update 
 
 Add whatever helps you do your job. This is your cheat sheet.
 """
+ROUTING_DIR = ROOT / 'routing'
 
 
 def usage(exit_code=1, stream=None):
@@ -366,6 +367,12 @@ def main():
 
     ensure_file(workspace / 'HEARTBEAT.md', DEFAULT_HEARTBEAT)
     ensure_file(workspace / 'TOOLS.md', DEFAULT_TOOLS)
+    if ROUTING_DIR.exists():
+        (workspace / 'references').mkdir(parents=True, exist_ok=True)
+        ensure_file(
+            workspace / 'references' / 'ROOM_ROUTING.md',
+            '# Shared Room Routing\n\nUse `/home/sergiy_shyshko/.openclaw/workspace/routing/philosophers-room.yaml` as the shared room-level routing and communication policy when this agent participates in the philosopher room.\n'
+        )
 
     sync_script = workspace / 'scripts' / 'sync_persona.py'
     if sync_script.exists():
