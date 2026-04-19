@@ -1,0 +1,46 @@
+agents:
+- name: Neo
+  profile: main
+  workspace: /home/sergiy_shyshko/.openclaw/workspace
+  telegramBot: bot_piggy_bot
+  gatewayPort: 18789
+  service: openclaw-gateway.service
+  purpose: personal assistant
+  preset: assistant
+  status: active
+- name: Aristotle
+  profile: arist
+  workspace: /home/sergiy_shyshko/.openclaw-arist/workspace
+  telegramBot: bot_aristotel_bot
+  gatewayPort: 18790
+  service: openclaw-gateway-arist.service
+  purpose: philosophical guide inspired by the ancient Greek philosopher Aristotle
+  preset: philosopher
+  status: active
+- name: Moderator
+  profile: moderator
+  workspace: /home/sergiy_shyshko/.openclaw-moderator/workspace
+  telegramBot: ''
+  gatewayPort: 18791
+  service: openclaw-gateway-moderator.service
+  purpose: clarify disagreements; identify strongest arguments on each side
+  preset: debate-moderator
+  status: scaffolded
+- name: Freud
+  profile: freud
+  workspace: /home/sergiy_shyshko/.openclaw-freud/workspace
+  telegramBot: ''
+  gatewayPort: 18793
+  service: openclaw-gateway-freud.service
+  purpose: psychoanalytic guide inspired by Sigmund Freud
+  preset: freud
+  status: scaffolded
+- name: Marcus Aurelius
+  profile: marcus
+  workspace: /home/sergiy_shyshko/.openclaw-marcus/workspace
+  telegramBot: ''
+  gatewayPort: 18794
+  service: openclaw-gateway-marcus.service
+  purpose: explain philosophy clearly; improve reasoning quality
+  preset: philosopher
+  status: scaffolded
