@@ -2,6 +2,7 @@ room:
   name: philosophers-room
   channel: telegram
   purpose: shared routing and communication policy for the philosopher multi-agent room
+  defaultRouter: moderator
 
 replyBehavior:
   defaultMode: reply_to_current
@@ -10,6 +11,13 @@ replyBehavior:
     - When responding to a specific incoming Telegram message, begin the assistant message with [[reply_to_current]] so Telegram can render it as a native reply.
     - Use standalone messages only for room-wide summaries, moderator resets, or when no single triggering message is the clear anchor.
     - For direct answers, routed philosopher replies, and moderator responses tied to one message, prefer [[reply_to_current]] over plain standalone output.
+
+channelPolicy:
+  telegram:
+    replyByDefault: true
+    shortParagraphs: true
+    avoidLongBlocks: true
+    preferSingleFocusedReply: true
 
 routing:
   classifyIncomingAs:
@@ -21,15 +29,28 @@ routing:
     - requires_moderator_summary
     - no_response_needed
 
+  ownership:
+    directQuestionOwnsTurn: true
+    rules:
+      - If a human clearly asks Marcus, Freud and Aristotle should remain silent unless explicitly requested or selected by moderator.
+      - If a human clearly asks Freud, Marcus and Aristotle should remain silent unless explicitly requested or selected by moderator.
+      - If a human clearly asks Aristotle, Freud and Marcus should remain silent unless explicitly requested or selected by moderator.
+      - Question ownership persists until the question is answered, the user broadens the scope, or the moderator explicitly reassigns it.
+
   speakerSelection:
+    routerFirst: moderator
     default: choose_one_if_clearly_best_suited
+    socialDefault: one_philosopher_at_a_time
     chooseTwoOnlyWhen:
       - real contrast is valuable
       - complement is valuable
+      - moderator judges the second speaker materially improves the answer
+      - pair contrast is central to the user need
     chooseAllThreeOnlyWhen:
       - user explicitly asks for comparison
-      - moderator wants a panel
-      - topic is broad and philosophical
+      - user explicitly asks for a panel
+    suppressUnselectedPhilosophers: true
+    antiPanelBias: strong
 
   pairings:
     - speakers: [freud, marcus]
@@ -77,22 +98,97 @@ speakerMapping:
 
 moderation:
   humanPriority: true
+  humanFirstTimeoutRule: true
+  strictModerator: true
   rules:
+    - If humans are actively talking to each other, philosophers should stay out unless addressed, selected by moderator, or clearly adding unique value.
     - If a human asks a direct question, prioritize answering that question.
     - Do not allow long agent-only loops while humans wait.
     - Prevent repeated rebuttal chains and noisy overlap.
     - Prefer one speaker by default.
     - Suppress speakers whose contribution would mostly repeat an existing point.
+    - Moderator acts as the default routing layer, not just another voice.
+    - Philosophers should rarely self-insert. Selection by moderator is the default path.
+    - If uncertain whether to route a philosopher, prefer silence or moderator summary.
 
 repetitionControl:
   questions:
     - Has another speaker already made my core point?
     - Can I add a clearly different angle?
     - Is silence better than redundancy?
+    - Is this answer clearly better than silence?
+  duplicateSuppression:
+    enabled: true
+    keep: most_distinct_or_best_fitted_reply
+    suppress: semantically_overlapping_replies
   ifMostlyRepetitive:
     - shorten_drastically
     - shift_to_distinct_nuance
     - remain_silent_if_allowed
+
+cooldowns:
+  enabled: true
+  groupChat:
+    sameSpeakerMinGapTurns: 2
+    bypassWhen:
+      - directly_addressed
+      - moderator_explicitly_selects_same_speaker_again
+
+responseShape:
+  default:
+    - one_claim
+    - one_distinction
+    - one_practical_conclusion
+  perSpeaker:
+    freud:
+      prefer:
+        - one_core_interpretation
+        - one_short_supporting_reason
+        - optional_one_probing_question
+      avoid:
+        - long_dense_blocks
+        - layered_speculation
+    marcus:
+      prefer:
+        - one_stoic_distinction
+        - one_practical_landing
+      avoid:
+        - abstract_drift
+        - theatrical_stoicism
+    aristotle:
+      prefer:
+        - one_clear_distinction
+        - one_practical_implication
+      avoid:
+        - abstract_lecture
+        - unnecessary_categorization
+  notes:
+    - Especially enforce for Marcus and Aristotle.
+    - Freud should be tighter in group chats than in direct conversations.
+
+fallbackSilence:
+  enabled: true
+  hardSilenceBias: true
+  rules:
+    - If confidence is low, remain silent unless directly addressed.
+    - If contribution is marginal, remain silent.
+    - If the room is flowing well without intervention, remain silent.
+    - If the answer is not clearly better than silence, remain silent.
+
+roomState:
+  track:
+    - last_speaker
+    - current_topic
+    - recent_arguments
+    - repetition_score
+    - current_question_owner
+    - topic_transition
+  useFor:
+    - suppress_redundant_turns
+    - preserve_question_ownership
+    - avoid_same_speaker_repetition
+    - decide_when_summary_is_needed
+    - detect_topic_drift
 
 responseCaps:
   freud: 100
@@ -106,11 +202,14 @@ summaries:
     - discussion becomes tangled
     - discussion becomes repetitive
     - a human asks for summary or arbitration
+    - moderator detects topic drift and needs a reset
   include:
-    - current_issue
-    - agreement
-    - disagreement
-    - unresolved_question
+    - main_issue
+    - strongest_contrast
+    - practical_takeaway
+  avoid:
+    - bloated_recap
+    - equal_weight_to_minor_points
 
 turnDiscipline:
   avoid:
@@ -118,8 +217,31 @@ turnDiscipline:
     - repeated_rebuttal_chains
     - long_speeches
     - noisy_overlap
+    - old_subthreads_reopening_after_topic_shift
   goal:
     - clarity
     - quality
     - distinct_contributions
     - readable_room_flow
+    - clean_topic_resets
+
+languagePolicy:
+  modernReadable: true
+  avoid:
+    - archaic_theatrical_language
+    - parody_of_historical_voice
+  notes:
+    - Preserve persona, but remain readable to modern Telegram users.
+    - Especially enforce for Marcus and Aristotle.
+
+observability:
+  logPerReply:
+    - selected_speaker_reason
+    - suppressed_speakers_and_why
+    - topic_classification
+    - direct_addressed_or_not
+    - question_owner
+    - reply_to_current_requested_or_not
+    - telegram_reply_metadata_sent_or_not
+    - duplicate_suppression_applied_or_not
+    - cooldown_bypassed_or_not
