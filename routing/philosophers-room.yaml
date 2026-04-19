@@ -5,10 +5,11 @@ room:
 
 replyBehavior:
   defaultMode: reply_to_current
-  policy: prefer-native-reply
+  policy: require-reply-tag-for-message-anchored-replies
   notes:
-    - When responding to a specific incoming Telegram message, prefer native reply behavior rather than an unthreaded standalone message.
+    - When responding to a specific incoming Telegram message, begin the assistant message with [[reply_to_current]] so Telegram can render it as a native reply.
     - Use standalone messages only for room-wide summaries, moderator resets, or when no single triggering message is the clear anchor.
+    - For direct answers, routed philosopher replies, and moderator responses tied to one message, prefer [[reply_to_current]] over plain standalone output.
 
 routing:
   classifyIncomingAs:
