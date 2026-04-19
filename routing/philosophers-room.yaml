@@ -28,7 +28,8 @@ routing:
     directAddressOwnsTurn: true
     selectedSpeakerAnswersNaturally: true
     rules:
-      - if one philosopher is clearly addressed by name, persona, title, or role, moderator selects that philosopher by default
+      - if one philosopher is clearly addressed by name, persona, title, or role, that philosopher owns the turn by default
+      - when one philosopher owns the turn, all other philosophers stay silent unless comparison is explicitly requested or moderator explicitly selects a second speaker
       - suppress unselected philosophers unless comparison is explicitly requested or truly needed
       - ownership persists until answered, broadened, or reassigned
   speakerSelection:
@@ -65,7 +66,8 @@ moderation:
     - moderator decides who answers, if anyone
     - philosophers do not self-route
     - philosophers do not reply to another philosopher unless explicitly selected
-    - if a philosopher is directly addressed or clearly the best fit, answer briefly unless there is a strong reason not to
+    - if a philosopher is directly addressed, route only that philosopher unless comparison is explicitly requested or a second speaker is explicitly selected
+    - if a philosopher is clearly the best fit, answer briefly unless there is a strong reason not to
     - if moderator is uncertain but one philosopher is clearly the best fit, route that philosopher instead of silence
     - avoid agent-only loops, rebuttal chains, overlap, and long speeches
 
