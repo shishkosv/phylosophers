@@ -16,7 +16,9 @@ var host = Host.CreateDefaultBuilder(args)
     .ConfigureServices((context, services) =>
     {
         services.Configure<OrchestratorOptions>(context.Configuration.GetSection("Orchestrator"));
-        services.AddHttpClient<IAgentInvoker, OpenClawAgentInvoker>();
+        services.AddHttpClient<OpenClawHttpBridge>();
+        services.AddSingleton<IOpenClawBridge, OpenClawLocalBridge>();
+        services.AddSingleton<IAgentInvoker, OpenClawAgentInvoker>();
         services.AddHttpClient<ITelegramPublisher, TelegramPublisher>();
         services.AddSingleton<IRoomStateStore, RoomStateStore>();
         services.AddSingleton<ContrastPolicy>();

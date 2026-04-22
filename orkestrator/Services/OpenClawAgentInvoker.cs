@@ -1,4 +1,3 @@
-using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
@@ -12,17 +11,15 @@ public sealed class OpenClawAgentInvoker : IAgentInvoker
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
-    private readonly HttpClient _httpClient;
+    private readonly IOpenClawBridge _bridge;
     private readonly ILogger<OpenClawAgentInvoker> _logger;
     private readonly OrchestratorOptions _options;
 
-    public OpenClawAgentInvoker(HttpClient httpClient, IOptions<OrchestratorOptions> options, ILogger<OpenClawAgentInvoker> logger)
+    public OpenClawAgentInvoker(IOpenClawBridge bridge, IOptions<OrchestratorOptions> options, ILogger<OpenClawAgentInvoker> logger)
     {
-        _httpClient = httpClient;
+        _bridge = bridge;
         _logger = logger;
         _options = options.Value;
-        _httpClient.BaseAddress = new Uri(_options.OpenClaw.BaseUrl);
-        _httpClient.Timeout = TimeSpan.FromSeconds(_options.OpenClaw.TimeoutSeconds);
     }
 
     public async Task<string?> InvokeAsync(AgentProfile profile, IReadOnlyList<RoomMessage> history, RoomMessage userMessage, int maxWords, CancellationToken cancellationToken = default)
@@ -30,12 +27,12 @@ public sealed class OpenClawAgentInvoker : IAgentInvoker
         var prompt = BuildAgentPrompt(profile, history, userMessage, maxWords);
         _logger.LogInformation("Invoking agent {Profile}", profile);
 
-        if (!IsRemoteInvocationConfigured())
+        if (!IsRemoteInvocationConfigured() && _options.OpenClaw.EnablePromptEchoFallback)
         {
             return BuildFallbackResponse(profile, prompt);
         }
 
-        var responseText = await PostPromptAsync(prompt, cancellationToken);
+        var responseText = await _bridge.SendAgentPromptAsync(profile, prompt, cancellationToken);
         return ExtractAssistantText(responseText) ?? responseText;
     }
 
@@ -44,12 +41,16 @@ public sealed class OpenClawAgentInvoker : IAgentInvoker
         var prompt = BuildModeratorPrompt(history, userMessage);
         _logger.LogInformation("Invoking moderator selector");
 
-        if (!IsRemoteInvocationConfigured())
+        if (!IsRemoteInvocationConfigured() && _options.OpenClaw.EnablePromptEchoFallback)
         {
             return BuildFallbackDecision(userMessage.Text, "Fallback local routing");
         }
 
-        var responseText = await PostPromptAsync(prompt, cancellationToken);
+        var responseText = await _bridge.SendModeratorPromptAsync(prompt, cancellationToken);
+        if (string.IsNullOrWhiteSpace(responseText))
+        {
+            return BuildFallbackDecision(userMessage.Text, "Empty moderator response fallback");
+        }
 
         try
         {
@@ -97,31 +98,7 @@ public sealed class OpenClawAgentInvoker : IAgentInvoker
         };
     }
 
-    private async Task<string> PostPromptAsync(string prompt, CancellationToken cancellationToken)
-    {
-        var payload = new
-        {
-            sessionKey = _options.OpenClaw.SessionKey,
-            message = prompt,
-            timeoutSeconds = _options.OpenClaw.TimeoutSeconds
-        };
-
-        using var request = new HttpRequestMessage(HttpMethod.Post, _options.OpenClaw.EndpointPath)
-        {
-            Content = new StringContent(JsonSerializer.Serialize(payload, JsonOptions), Encoding.UTF8, "application/json")
-        };
-
-        if (!string.IsNullOrWhiteSpace(_options.OpenClaw.BearerToken))
-        {
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _options.OpenClaw.BearerToken);
-        }
-
-        using var response = await _httpClient.SendAsync(request, cancellationToken);
-        response.EnsureSuccessStatusCode();
-        return await response.Content.ReadAsStringAsync(cancellationToken);
-    }
-
-    private static string? ExtractAssistantText(string responseText)
+    private static string? ExtractAssistantText(string? responseText)
     {
         if (string.IsNullOrWhiteSpace(responseText))
         {
