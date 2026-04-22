@@ -26,6 +26,7 @@ public sealed class TelegramOptions
 {
     public string BotToken { get; set; } = string.Empty;
     public string ChatId { get; set; } = string.Empty;
+    public bool DisableWebPagePreview { get; set; } = true;
     public bool UseWebhook { get; set; }
     public string WebhookSecret { get; set; } = string.Empty;
 }

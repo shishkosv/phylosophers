@@ -91,18 +91,22 @@ Meaning:
 - `BearerToken`: optional bearer token if your adapter requires auth
 - `EnablePromptEchoFallback`: keep `true` for local smoke tests, set `false` for strict production mode
 
+Telegram configuration:
+- `Telegram.BotToken`: real bot token used for `sendMessage`
+- `Telegram.ChatId`: target Telegram chat id
+- `Telegram.DisableWebPagePreview`: passed through to Telegram Bot API
+
 ## Production adjustments still recommended
 
 Before deploying, I recommend these upgrades:
 
-1. replace `TelegramPublisher` placeholder with real Telegram Bot API publishing
-2. provide a real OpenClaw adapter endpoint and set `OpenClaw.EndpointPath` to it
-3. harden moderator JSON parsing with a dedicated DTO and validation
-4. add structured prompt builders per profile instead of the simple generic prompt composer
-5. add inbound webhook controller or polling worker
-6. add per-room lock to avoid concurrent turn collisions
-7. add backup/rotation for `memory/room-state.json`
-8. add automated tests for routing, contrast, and repetition suppression
+1. provide a real OpenClaw adapter endpoint and set `OpenClaw.EndpointPath` to it
+2. harden moderator JSON parsing with a dedicated DTO and validation
+3. add structured prompt builders per profile instead of the simple generic prompt composer
+4. add inbound webhook controller or polling worker
+5. add per-room lock to avoid concurrent turn collisions
+6. add backup/rotation for `memory/room-state.json`
+7. add automated tests for routing, contrast, and repetition suppression
 
 ## Design choices
 
