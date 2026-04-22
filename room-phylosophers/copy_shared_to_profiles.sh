@@ -43,14 +43,5 @@ copy_role_back aristotle /home/sergiy_shyshko/.openclaw-arist/workspace
 copy_role_back freud /home/sergiy_shyshko/.openclaw-freud/workspace
 copy_role_back marcus /home/sergiy_shyshko/.openclaw-marcus/workspace
 copy_role_back moderator /home/sergiy_shyshko/.openclaw-moderator/workspace
-copy_role_back debatemoderator /home/sergiy_shyshko/.openclaw-debatemoderator/workspace
-
-copy_if_exists "$BASE/shared-routing/philosophers-room.yaml" /home/sergiy_shyshko/.openclaw/workspace/routing/philosophers-room.yaml
-copy_if_exists "$BASE/shared-routing/main-USER.md" /home/sergiy_shyshko/.openclaw/workspace/USER.md
-copy_if_exists "$BASE/shared-routing/main-HEARTBEAT.md" /home/sergiy_shyshko/.openclaw/workspace/HEARTBEAT.md
-copy_if_exists "$BASE/shared-routing/main-AGENTS.md" /home/sergiy_shyshko/.openclaw/workspace/AGENTS.md
-copy_if_exists "$BASE/shared-routing/main-SOUL.md" /home/sergiy_shyshko/.openclaw/workspace/SOUL.md
-copy_if_exists "$BASE/shared-routing/main-IDENTITY.md" /home/sergiy_shyshko/.openclaw/workspace/IDENTITY.md
-copy_if_exists "$BASE/shared-routing/main-assistant.yaml" /home/sergiy_shyshko/.openclaw/workspace/assistant.yaml
 
 echo "done: copied shared folder back to profiles"

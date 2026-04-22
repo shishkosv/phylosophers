@@ -39,20 +39,11 @@ copy_role() {
   copy_dir_if_exists "$srcroot/scripts" "$dst/scripts"
 }
 
-mkdir -p "$BASE"/{aristotle,freud,marcus,moderator,debatemoderator,shared-routing}
+mkdir -p "$BASE"/{aristotle,freud,marcus,moderator}
 
 copy_role aristotle /home/sergiy_shyshko/.openclaw-arist/workspace
 copy_role freud /home/sergiy_shyshko/.openclaw-freud/workspace
 copy_role marcus /home/sergiy_shyshko/.openclaw-marcus/workspace
 copy_role moderator /home/sergiy_shyshko/.openclaw-moderator/workspace
-copy_role debatemoderator /home/sergiy_shyshko/.openclaw-debatemoderator/workspace
-
-copy_if_exists /home/sergiy_shyshko/.openclaw/workspace/routing/philosophers-room.yaml "$BASE/shared-routing/philosophers-room.yaml"
-copy_if_exists /home/sergiy_shyshko/.openclaw/workspace/USER.md "$BASE/shared-routing/main-USER.md"
-copy_if_exists /home/sergiy_shyshko/.openclaw/workspace/HEARTBEAT.md "$BASE/shared-routing/main-HEARTBEAT.md"
-copy_if_exists /home/sergiy_shyshko/.openclaw/workspace/AGENTS.md "$BASE/shared-routing/main-AGENTS.md"
-copy_if_exists /home/sergiy_shyshko/.openclaw/workspace/SOUL.md "$BASE/shared-routing/main-SOUL.md"
-copy_if_exists /home/sergiy_shyshko/.openclaw/workspace/IDENTITY.md "$BASE/shared-routing/main-IDENTITY.md"
-copy_if_exists /home/sergiy_shyshko/.openclaw/workspace/assistant.yaml "$BASE/shared-routing/main-assistant.yaml"
 
 echo "done: copied profiles to shared folder $BASE"
