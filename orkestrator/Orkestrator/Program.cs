@@ -17,6 +17,18 @@ if (args.Length > 0 && string.Equals(args[0], "serve", StringComparison.OrdinalI
 
     builder.Services.Configure<OrchestratorOptions>(builder.Configuration.GetSection("Orchestrator"));
     builder.Services.AddHttpClient<IOpenClawGatewayClient, OpenClawGatewayHttpClient>();
+    builder.Services.AddHttpClient<OpenClawHttpBridge>();
+    builder.Services.AddSingleton<IOpenClawBridge, OpenClawLocalBridge>();
+    builder.Services.AddSingleton<IAgentInvoker, OpenClawAgentInvoker>();
+    builder.Services.AddHttpClient<ITelegramPublisher, TelegramPublisher>();
+    builder.Services.AddHttpClient<TelegramLongPollingService>();
+    builder.Services.AddSingleton<TelegramPollingStateStore>();
+    builder.Services.AddSingleton<IRoomStateStore, RoomStateStore>();
+    builder.Services.AddSingleton<ContrastPolicy>();
+    builder.Services.AddSingleton<RepetitionGuard>();
+    builder.Services.AddSingleton<ModeratorSelector>();
+    builder.Services.AddSingleton<RoomOrchestrator>();
+    builder.Services.AddHostedService(sp => sp.GetRequiredService<TelegramLongPollingService>());
     builder.Services.AddOpenClawBridgeApi();
 
     var app = builder.Build();
@@ -40,11 +52,14 @@ var host = Host.CreateDefaultBuilder(args)
         services.AddSingleton<IOpenClawBridge, OpenClawLocalBridge>();
         services.AddSingleton<IAgentInvoker, OpenClawAgentInvoker>();
         services.AddHttpClient<ITelegramPublisher, TelegramPublisher>();
+        services.AddHttpClient<TelegramLongPollingService>();
+        services.AddSingleton<TelegramPollingStateStore>();
         services.AddSingleton<IRoomStateStore, RoomStateStore>();
         services.AddSingleton<ContrastPolicy>();
         services.AddSingleton<RepetitionGuard>();
         services.AddSingleton<ModeratorSelector>();
         services.AddSingleton<RoomOrchestrator>();
+        services.AddHostedService(sp => sp.GetRequiredService<TelegramLongPollingService>());
     })
     .Build();
 

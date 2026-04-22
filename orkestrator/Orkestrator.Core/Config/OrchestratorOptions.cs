@@ -36,4 +36,8 @@ public sealed class TelegramOptions
     public bool DisableWebPagePreview { get; set; } = true;
     public bool UseWebhook { get; set; }
     public string WebhookSecret { get; set; } = string.Empty;
+    public bool EnablePolling { get; set; } = true;
+    public int PollingTimeoutSeconds { get; set; } = 30;
+    public int PollingLimit { get; set; } = 20;
+    public string PollingOffsetStateFilePath { get; set; } = "memory/telegram-polling-state.json";
 }

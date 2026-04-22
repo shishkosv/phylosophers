@@ -16,6 +16,7 @@
     <Compile Include="RepetitionGuard.cs" />
     <Compile Include="RoomOrchestrator.cs" />
     <Compile Include="RoomRules.cs" />
+    <Compile Include="TelegramLongPollingService.cs" />
   </ItemGroup>
 
   <ItemGroup>

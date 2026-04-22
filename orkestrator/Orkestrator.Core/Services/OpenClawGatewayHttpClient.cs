@@ -25,12 +25,16 @@ public sealed class OpenClawGatewayHttpClient : IOpenClawGatewayClient
     {
         var payload = new
         {
-            sessionKey,
-            message = prompt,
-            timeoutSeconds = _options.OpenClaw.TimeoutSeconds
+            tool = "sessions_send",
+            args = new
+            {
+                sessionKey,
+                message = prompt,
+                timeoutSeconds = _options.OpenClaw.TimeoutSeconds
+            }
         };
 
-        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/sessions/send")
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/tools/invoke")
         {
             Content = new StringContent(JsonSerializer.Serialize(payload, JsonOptions), Encoding.UTF8, "application/json")
         };
@@ -41,7 +45,51 @@ public sealed class OpenClawGatewayHttpClient : IOpenClawGatewayClient
         }
 
         using var response = await _httpClient.SendAsync(request, cancellationToken);
+        var body = await response.Content.ReadAsStringAsync(cancellationToken);
         response.EnsureSuccessStatusCode();
-        return await response.Content.ReadAsStringAsync(cancellationToken);
+        return ExtractResultText(body);
+    }
+
+    private static string ExtractResultText(string body)
+    {
+        using var document = JsonDocument.Parse(body);
+        var root = document.RootElement;
+
+        if (root.TryGetProperty("ok", out var ok) && ok.ValueKind == JsonValueKind.False)
+        {
+            var errorMessage = root.TryGetProperty("error", out var error)
+                && error.ValueKind == JsonValueKind.Object
+                && error.TryGetProperty("message", out var message)
+                && message.ValueKind == JsonValueKind.String
+                    ? message.GetString()
+                    : "OpenClaw tool invocation failed.";
+
+            throw new InvalidOperationException(errorMessage);
+        }
+
+        if (!root.TryGetProperty("result", out var result) || result.ValueKind != JsonValueKind.Object)
+        {
+            return body;
+        }
+
+        if (result.TryGetProperty("details", out var details))
+        {
+            return details.GetRawText();
+        }
+
+        if (result.TryGetProperty("content", out var content)
+            && content.ValueKind == JsonValueKind.Array
+            && content.GetArrayLength() > 0)
+        {
+            var first = content[0];
+            if (first.ValueKind == JsonValueKind.Object
+                && first.TryGetProperty("text", out var text)
+                && text.ValueKind == JsonValueKind.String)
+            {
+                return text.GetString() ?? body;
+            }
+        }
+
+        return result.GetRawText();
     }
 }

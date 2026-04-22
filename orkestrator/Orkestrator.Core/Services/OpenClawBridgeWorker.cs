@@ -28,8 +28,16 @@ public sealed class OpenClawBridgeWorker
             ? _options.OpenClaw.SessionKey
             : request.SessionKey;
 
+        _logger.LogInformation("Processing bridge request. Kind={Kind}, Profile={Profile}, RequestSessionKeyPresent={RequestSessionKeyPresent}, EffectiveSessionKeyPresent={EffectiveSessionKeyPresent}, PromptLength={PromptLength}",
+            request.Kind,
+            request.Profile,
+            !string.IsNullOrWhiteSpace(request.SessionKey),
+            !string.IsNullOrWhiteSpace(sessionKey),
+            request.Prompt?.Length ?? 0);
+
         if (string.IsNullOrWhiteSpace(request.Prompt))
         {
+            _logger.LogWarning("Rejecting bridge request because prompt is empty");
             return new OpenClawBridgeResponse
             {
                 Ok = false,
@@ -57,6 +65,7 @@ public sealed class OpenClawBridgeWorker
                 };
             }
 
+            _logger.LogWarning("Rejecting bridge request because no session key is available and fallback is disabled");
             return new OpenClawBridgeResponse
             {
                 Ok = false,
@@ -66,16 +75,32 @@ public sealed class OpenClawBridgeWorker
             };
         }
 
-        var raw = await _gatewayClient.SendAsync(sessionKey, request.Prompt, cancellationToken);
-        return new OpenClawBridgeResponse
+        try
         {
-            Ok = true,
-            Kind = request.Kind,
-            Profile = request.Profile,
-            SessionKey = sessionKey,
-            Reply = ExtractAssistantText(raw) ?? raw,
-            Raw = raw
-        };
+            var raw = await _gatewayClient.SendAsync(sessionKey, request.Prompt, cancellationToken);
+            _logger.LogInformation("Bridge request completed successfully. Kind={Kind}, Profile={Profile}, RawLength={RawLength}", request.Kind, request.Profile, raw?.Length ?? 0);
+            return new OpenClawBridgeResponse
+            {
+                Ok = true,
+                Kind = request.Kind,
+                Profile = request.Profile,
+                SessionKey = sessionKey,
+                Reply = ExtractAssistantText(raw) ?? raw,
+                Raw = raw
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Bridge request failed. Kind={Kind}, Profile={Profile}, SessionKey={SessionKey}", request.Kind, request.Profile, sessionKey);
+            return new OpenClawBridgeResponse
+            {
+                Ok = false,
+                Kind = request.Kind,
+                Profile = request.Profile,
+                SessionKey = sessionKey,
+                Error = ex.Message
+            };
+        }
     }
 
     private static string? ExtractAssistantText(string? responseText)

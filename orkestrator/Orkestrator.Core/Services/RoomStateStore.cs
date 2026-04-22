@@ -24,23 +24,60 @@ public sealed class RoomStateStore : IRoomStateStore
 
     public async Task<RoomState> LoadAsync(CancellationToken cancellationToken = default)
     {
-        if (!File.Exists(_stateFilePath))
+        try
         {
-            return new RoomState();
-        }
+            if (!File.Exists(_stateFilePath))
+            {
+                _logger.LogInformation("Room state file {Path} does not exist, using empty state", _stateFilePath);
+                return new RoomState();
+            }
 
-        await using var stream = File.OpenRead(_stateFilePath);
-        var state = await JsonSerializer.DeserializeAsync<RoomState>(stream, JsonOptions, cancellationToken);
-        return state ?? new RoomState();
+            _logger.LogDebug("Loading room state from {Path}", _stateFilePath);
+            await using var stream = File.OpenRead(_stateFilePath);
+            var state = await JsonSerializer.DeserializeAsync<RoomState>(stream, JsonOptions, cancellationToken);
+
+            if (state is null)
+            {
+                _logger.LogWarning("Room state file {Path} was empty or invalid, using empty state", _stateFilePath);
+                return new RoomState();
+            }
+
+            _logger.LogDebug("Loaded room state from {Path} with {HistoryCount} messages, last speaker {LastSpeaker}, last turn {LastTurnId}", _stateFilePath, state.History.Count, state.LastSpeaker, state.LastTurnId);
+            return state;
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("Loading room state from {Path} was canceled", _stateFilePath);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load room state from {Path}", _stateFilePath);
+            throw;
+        }
     }
 
     public async Task SaveAsync(RoomState state, CancellationToken cancellationToken = default)
     {
-        Directory.CreateDirectory(Path.GetDirectoryName(_stateFilePath)!);
-        state.UpdatedAtUtc = DateTimeOffset.UtcNow;
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(_stateFilePath)!);
+            state.UpdatedAtUtc = DateTimeOffset.UtcNow;
 
-        await using var stream = File.Create(_stateFilePath);
-        await JsonSerializer.SerializeAsync(stream, state, JsonOptions, cancellationToken);
-        _logger.LogDebug("Saved room state to {Path}", _stateFilePath);
+            _logger.LogDebug("Saving room state to {Path} with {HistoryCount} messages, last speaker {LastSpeaker}, last turn {LastTurnId}", _stateFilePath, state.History.Count, state.LastSpeaker, state.LastTurnId);
+            await using var stream = File.Create(_stateFilePath);
+            await JsonSerializer.SerializeAsync(stream, state, JsonOptions, cancellationToken);
+            _logger.LogDebug("Saved room state to {Path}", _stateFilePath);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("Saving room state to {Path} was canceled", _stateFilePath);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save room state to {Path}", _stateFilePath);
+            throw;
+        }
     }
 }

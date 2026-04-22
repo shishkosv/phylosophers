@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Orkestrator.Config;
@@ -35,7 +36,10 @@ public sealed class OpenClawLocalBridge : IOpenClawBridge
         if (_options.OpenClaw.EnablePromptEchoFallback)
         {
             _logger.LogInformation("Using local fallback bridge for {Profile}", profile);
-            return $"{{\"reply\":\"[{profile}] {Escape(prompt)}\"}}";
+            return JsonSerializer.Serialize(new
+            {
+                reply = $"[{profile}] {prompt}"
+            });
         }
 
         throw new InvalidOperationException(
@@ -43,9 +47,8 @@ public sealed class OpenClawLocalBridge : IOpenClawBridge
     }
 
     private bool IsBridgeConfigured()
-        => !string.IsNullOrWhiteSpace(_options.OpenClaw.InternalBridge.Url)
+        => !string.IsNullOrWhiteSpace(_options.OpenClaw.SessionKey)
+           && !string.IsNullOrWhiteSpace(_options.OpenClaw.InternalBridge.Url)
            && !string.IsNullOrWhiteSpace(_options.OpenClaw.InternalBridge.RoutePath);
 
-    private static string Escape(string value)
-        => value.Replace("\\", "\\\\").Replace("\"", "\\\"");
 }

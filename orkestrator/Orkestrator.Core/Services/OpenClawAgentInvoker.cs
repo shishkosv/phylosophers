@@ -25,42 +25,52 @@ public sealed class OpenClawAgentInvoker : IAgentInvoker
     public async Task<string?> InvokeAsync(AgentProfile profile, IReadOnlyList<RoomMessage> history, RoomMessage userMessage, int maxWords, CancellationToken cancellationToken = default)
     {
         var prompt = BuildAgentPrompt(profile, history, userMessage, maxWords);
-        _logger.LogInformation("Invoking agent {Profile}", profile);
+        _logger.LogInformation("Invoking agent {Profile} for message {MessageId} with historyCount={HistoryCount} and maxWords={MaxWords}", profile, userMessage.Id, history.Count, maxWords);
 
         if (!IsRemoteInvocationConfigured() && _options.OpenClaw.EnablePromptEchoFallback)
         {
+            _logger.LogInformation("Using local fallback response for agent {Profile} on message {MessageId}", profile, userMessage.Id);
             return BuildFallbackResponse(profile, prompt);
         }
 
         var responseText = await _bridge.SendAgentPromptAsync(profile, prompt, cancellationToken);
-        return ExtractAssistantText(responseText) ?? responseText;
+        var extracted = ExtractAssistantText(responseText) ?? responseText;
+        _logger.LogInformation("Received agent response from {Profile} for message {MessageId}. Empty={IsEmpty}", profile, userMessage.Id, string.IsNullOrWhiteSpace(extracted));
+        return extracted;
     }
 
     public async Task<RouteDecision> InvokeModeratorAsync(IReadOnlyList<RoomMessage> history, RoomMessage userMessage, CancellationToken cancellationToken = default)
     {
         var prompt = BuildModeratorPrompt(history, userMessage);
-        _logger.LogInformation("Invoking moderator selector");
+        _logger.LogInformation("Invoking moderator selector for message {MessageId} with historyCount={HistoryCount}", userMessage.Id, history.Count);
 
         if (!IsRemoteInvocationConfigured() && _options.OpenClaw.EnablePromptEchoFallback)
         {
-            return BuildFallbackDecision(userMessage.Text, "Fallback local routing");
+            var fallbackDecision = BuildFallbackDecision(userMessage.Text, "Fallback local routing");
+            _logger.LogInformation("Using fallback moderator decision for message {MessageId}: action={Action}, speaker={Speaker}, maxWords={MaxWords}, reason={Reason}", userMessage.Id, fallbackDecision.Action, fallbackDecision.Speaker, fallbackDecision.MaxWords, fallbackDecision.Reason);
+            return fallbackDecision;
         }
 
         var responseText = await _bridge.SendModeratorPromptAsync(prompt, cancellationToken);
         if (string.IsNullOrWhiteSpace(responseText))
         {
-            return BuildFallbackDecision(userMessage.Text, "Empty moderator response fallback");
+            var fallbackDecision = BuildFallbackDecision(userMessage.Text, "Empty moderator response fallback");
+            _logger.LogWarning("Moderator returned empty response for message {MessageId}. Falling back to action={Action}, speaker={Speaker}, maxWords={MaxWords}, reason={Reason}", userMessage.Id, fallbackDecision.Action, fallbackDecision.Speaker, fallbackDecision.MaxWords, fallbackDecision.Reason);
+            return fallbackDecision;
         }
 
         try
         {
-            var decision = JsonSerializer.Deserialize<RouteDecision>(responseText, JsonOptions);
-            return decision ?? new RouteDecision { Action = RouteAction.Silence, Reason = "Empty moderator decision" };
+            var decision = JsonSerializer.Deserialize<RouteDecision>(responseText, JsonOptions)
+                ?? new RouteDecision { Action = RouteAction.Silence, Reason = "Empty moderator decision" };
+            _logger.LogInformation("Moderator decision for message {MessageId}: action={Action}, speaker={Speaker}, maxWords={MaxWords}, requiresContrast={RequiresContrast}, reason={Reason}", userMessage.Id, decision.Action, decision.Speaker, decision.MaxWords, decision.RequiresContrastSpeaker, decision.Reason);
+            return decision;
         }
         catch (JsonException ex)
         {
-            _logger.LogWarning(ex, "Failed to parse moderator response as RouteDecision. Falling back to local selector.");
-            return BuildFallbackDecision(userMessage.Text, "Moderator response parse failure fallback");
+            var fallbackDecision = BuildFallbackDecision(userMessage.Text, "Moderator response parse failure fallback");
+            _logger.LogWarning(ex, "Failed to parse moderator response as RouteDecision for message {MessageId}. Falling back to action={Action}, speaker={Speaker}, maxWords={MaxWords}, reason={Reason}", userMessage.Id, fallbackDecision.Action, fallbackDecision.Speaker, fallbackDecision.MaxWords, fallbackDecision.Reason);
+            return fallbackDecision;
         }
     }
 
