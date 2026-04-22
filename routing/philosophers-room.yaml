@@ -2,6 +2,7 @@ room:
   name: philosophers-room
   channel: telegram
   defaultRouter: moderator
+  architecture: single_visible_moderator_bot
 
 replyBehavior:
   defaultMode: reply_to_current
@@ -63,12 +64,13 @@ moderation:
   strictModerator: true
   hardSilenceBias: true
   rules:
+    - moderator is the only visible bot in the Telegram room
     - moderator decides who answers, if anyone
-    - philosophers do not self-route
-    - philosophers do not reply to another philosopher unless explicitly selected
-    - if a philosopher is directly addressed, route only that philosopher unless comparison is explicitly requested or a second speaker is explicitly selected
-    - if a philosopher is clearly the best fit, answer briefly unless there is a strong reason not to
-    - if moderator is uncertain but one philosopher is clearly the best fit, route that philosopher instead of silence
+    - by default produce one reply in one selected philosopher voice
+    - if a philosopher is directly addressed, answer in that philosopher's voice unless there is a strong reason not to
+    - use two voices only when explicit comparison or genuinely valuable contrast is requested
+    - use three voices only for explicit panel or comparison requests
+    - if moderator is uncertain but one philosopher is clearly the best fit, answer in that philosopher's voice instead of silence
     - avoid agent-only loops, rebuttal chains, overlap, and long speeches
 
 repetitionControl:
