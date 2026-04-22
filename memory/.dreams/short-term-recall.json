@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "updatedAt": "2026-04-22T00:22:59.566Z",
+  "entries": {
+    "memory:memory/2026-04-19.md:5:10": {
+      "key": "memory:memory/2026-04-19.md:5:10",
+      "path": "memory/2026-04-19.md",
+      "startLine": 5,
+      "endLine": 10,
+      "source": "memory",
+      "snippet": "- Workspace repo was initialized/snapshotted and pushed to GitHub remote https://github.com/shishkosv/phylosophers with commits including 2fe4913, 46c6af4, and ff1843e. - Investigated Telegram native reply behavior: prompts and routing now emit [[reply_to_current]], but evidence suggests the remaining issue is in OpenClaw transport/runtime, not persona config. Found existing reply support in OpenClaw payload/runtime/Telegram send path, suggesting a narrow transport-layer issue. - User asked for debug observability logs plus a cleanup script/timer every 3 hours; approval was given for both, but runtime patching is blocked from this workspace because installed OpenClaw files under ~/.npm-globa",
+      "recallCount": 1,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 0.6314502916440022,
+      "maxScore": 0.6314502916440022,
+      "firstRecalledAt": "2026-04-22T00:22:59.566Z",
+      "lastRecalledAt": "2026-04-22T00:22:59.566Z",
+      "queryHashes": [
+        "6740ac0d67d3"
+      ],
+      "recallDays": [
+        "2026-04-22"
+      ],
+      "conceptTags": [
+        "initialized/snapshotted",
+        "reply-to-current",
+        "transport/runtime",
+        "payload/runtime/telegram",
+        "transport-layer",
+        "script/timer",
+        "npm-globa",
+        "repo"
+      ]
+    }
+  }
+}

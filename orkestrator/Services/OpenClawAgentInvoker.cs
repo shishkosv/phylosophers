@@ -66,8 +66,9 @@ public sealed class OpenClawAgentInvoker : IAgentInvoker
 
     private bool IsRemoteInvocationConfigured()
     {
-        return !string.IsNullOrWhiteSpace(_options.OpenClaw.EndpointPath)
-            && !string.IsNullOrWhiteSpace(_options.OpenClaw.SessionKey);
+        return !string.IsNullOrWhiteSpace(_options.OpenClaw.InternalBridge.Url)
+            && !string.IsNullOrWhiteSpace(_options.OpenClaw.InternalBridge.RoutePath)
+            && (!string.IsNullOrWhiteSpace(_options.OpenClaw.SessionKey) || _options.OpenClaw.EnablePromptEchoFallback);
     }
 
     private string BuildFallbackResponse(AgentProfile profile, string prompt)
@@ -78,7 +79,7 @@ public sealed class OpenClawAgentInvoker : IAgentInvoker
         }
 
         throw new InvalidOperationException(
-            "OpenClaw agent invocation is not configured. Set Orchestrator:OpenClaw:EndpointPath and SessionKey, or enable EnablePromptEchoFallback for local smoke tests.");
+            "OpenClaw agent invocation is not configured. Set Orchestrator:OpenClaw:InternalBridge:Url and SessionKey, or enable EnablePromptEchoFallback for local smoke tests.");
     }
 
     private RouteDecision BuildFallbackDecision(string userText, string reason)
@@ -86,7 +87,7 @@ public sealed class OpenClawAgentInvoker : IAgentInvoker
         if (!_options.OpenClaw.EnablePromptEchoFallback)
         {
             throw new InvalidOperationException(
-                "OpenClaw moderator invocation is not configured. Set Orchestrator:OpenClaw:EndpointPath and SessionKey, or enable EnablePromptEchoFallback for local smoke tests.");
+                "OpenClaw moderator invocation is not configured. Set Orchestrator:OpenClaw:InternalBridge:Url and SessionKey, or enable EnablePromptEchoFallback for local smoke tests.");
         }
 
         return new RouteDecision

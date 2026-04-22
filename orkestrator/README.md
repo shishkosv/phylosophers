@@ -48,9 +48,10 @@ This is file-backed durable state inside the workspace memory area.
 The project now builds and runs on .NET 8.
 
 Important OpenClaw note:
-- the previously assumed `/api/sessions/send` endpoint does not exist on the local gateway tested here
-- `OpenClawAgentInvoker` was updated to use an explicit configurable HTTP endpoint instead of hard-coding a guessed route
-- if no real endpoint is configured, the project can still use a prompt-echo fallback for smoke tests
+- the previously assumed direct gateway route was not reliable for this project boundary
+- the C# app now hosts its own internal bridge endpoint and worker
+- invokers call the local internal route, and the worker centralizes translation to the actual OpenClaw gateway call
+- if no real session key is configured, the bridge can still use a prompt-echo fallback for smoke tests
 
 ## Build
 
@@ -61,6 +62,14 @@ dotnet build -c Release
 ```
 
 ## Run
+
+```bash
+dotnet run -- serve
+```
+
+Starts the internal bridge API on the configured local URL.
+
+For a one-shot orchestration turn:
 
 ```bash
 dotnet run -- "Why do people sabotage themselves even when they know better?"
@@ -76,19 +85,25 @@ dotnet run -- "Why do people sabotage themselves even when they know better?"
     "OpenClaw": {
       "BaseUrl": "http://localhost:18789",
       "SessionKey": "",
-      "EndpointPath": "",
+      "EndpointPath": "/internal/openclaw/bridge/invoke",
       "BearerToken": "",
       "EnablePromptEchoFallback": true,
-      "TimeoutSeconds": 60
+      "TimeoutSeconds": 60,
+      "InternalBridge": {
+        "Url": "http://127.0.0.1:5187",
+        "RoutePath": "/internal/openclaw/bridge/invoke"
+      }
     }
   }
 }
 ```
 
 Meaning:
-- `EndpointPath`: real HTTP path for your own OpenClaw-facing adapter or gateway extension
-- `SessionKey`: target OpenClaw session key
-- `BearerToken`: optional bearer token if your adapter requires auth
+- `SessionKey`: target OpenClaw session key used by the bridge worker when forwarding to OpenClaw
+- `BearerToken`: optional bearer token if the downstream OpenClaw gateway requires auth
+- `InternalBridge.Url`: local listener URL hosted by this C# project
+- `InternalBridge.RoutePath`: internal route the invoker calls inside this project
+- `EndpointPath`: retained as the default internal route path value for compatibility
 - `EnablePromptEchoFallback`: keep `true` for local smoke tests, set `false` for strict production mode
 
 Telegram configuration:
@@ -100,13 +115,13 @@ Telegram configuration:
 
 Before deploying, I recommend these upgrades:
 
-1. provide a real OpenClaw adapter endpoint and set `OpenClaw.EndpointPath` to it
+1. add stronger validation and auth around the internal bridge endpoint
 2. harden moderator JSON parsing with a dedicated DTO and validation
 3. add structured prompt builders per profile instead of the simple generic prompt composer
 4. add inbound webhook controller or polling worker
 5. add per-room lock to avoid concurrent turn collisions
 6. add backup/rotation for `memory/room-state.json`
-7. add automated tests for routing, contrast, and repetition suppression
+7. add automated tests for routing, contrast, repetition suppression, and bridge API behavior
 
 ## Design choices
 

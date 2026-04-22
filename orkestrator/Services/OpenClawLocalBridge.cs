@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Orkestrator.Config;
@@ -27,25 +26,26 @@ public sealed class OpenClawLocalBridge : IOpenClawBridge
 
     private async Task<string?> SendAsync(AgentProfile profile, string prompt, CancellationToken cancellationToken)
     {
-        if (IsRemoteConfigured())
+        if (IsBridgeConfigured())
         {
+            _logger.LogDebug("Forwarding {Profile} prompt through internal bridge", profile);
             return await _httpBridge.SendAgentPromptAsync(profile, prompt, cancellationToken);
         }
 
         if (_options.OpenClaw.EnablePromptEchoFallback)
         {
             _logger.LogInformation("Using local fallback bridge for {Profile}", profile);
-            return JsonSerializer.Serialize(new
-            {
-                reply = $"[{profile}] {prompt}"
-            });
+            return $"{{\"reply\":\"[{profile}] {Escape(prompt)}\"}}";
         }
 
         throw new InvalidOperationException(
-            "OpenClaw local bridge is not fully configured. Set Orchestrator:OpenClaw:EndpointPath and SessionKey, or enable EnablePromptEchoFallback for smoke tests.");
+            "OpenClaw local bridge is not fully configured. Set Orchestrator:OpenClaw:InternalBridge:Url and SessionKey, or enable EnablePromptEchoFallback for smoke tests.");
     }
 
-    private bool IsRemoteConfigured()
-        => !string.IsNullOrWhiteSpace(_options.OpenClaw.EndpointPath)
-           && !string.IsNullOrWhiteSpace(_options.OpenClaw.SessionKey);
+    private bool IsBridgeConfigured()
+        => !string.IsNullOrWhiteSpace(_options.OpenClaw.InternalBridge.Url)
+           && !string.IsNullOrWhiteSpace(_options.OpenClaw.InternalBridge.RoutePath);
+
+    private static string Escape(string value)
+        => value.Replace("\\", "\\\\").Replace("\"", "\\\"");
 }

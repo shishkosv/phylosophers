@@ -16,10 +16,17 @@ public sealed class OpenClawOptions
 {
     public string BaseUrl { get; set; } = "http://localhost:18789";
     public string SessionKey { get; set; } = string.Empty;
-    public string EndpointPath { get; set; } = string.Empty;
+    public string EndpointPath { get; set; } = "/internal/openclaw/bridge/invoke";
     public string BearerToken { get; set; } = string.Empty;
     public bool EnablePromptEchoFallback { get; set; }
     public int TimeoutSeconds { get; set; } = 60;
+    public InternalBridgeOptions InternalBridge { get; set; } = new();
+}
+
+public sealed class InternalBridgeOptions
+{
+    public string Url { get; set; } = "http://127.0.0.1:5187";
+    public string RoutePath { get; set; } = "/internal/openclaw/bridge/invoke";
 }
 
 public sealed class TelegramOptions

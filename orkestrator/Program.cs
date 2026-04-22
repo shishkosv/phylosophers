@@ -1,10 +1,30 @@
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using Orkestrator.Config;
 using Orkestrator.Models;
 using Orkestrator.Orchestration;
 using Orkestrator.Services;
+
+if (args.Length > 0 && string.Equals(args[0], "serve", StringComparison.OrdinalIgnoreCase))
+{
+    var builder = WebApplication.CreateBuilder(args);
+    builder.Configuration.SetBasePath(AppContext.BaseDirectory);
+    builder.Configuration.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+    builder.Configuration.AddEnvironmentVariables(prefix: "ORKESTRATOR_");
+
+    builder.Services.Configure<OrchestratorOptions>(builder.Configuration.GetSection("Orchestrator"));
+    builder.Services.AddHttpClient<IOpenClawGatewayClient, OpenClawGatewayHttpClient>();
+    builder.Services.AddOpenClawBridgeApi();
+
+    var app = builder.Build();
+    var options = app.Services.GetRequiredService<IOptions<OrchestratorOptions>>().Value;
+    app.MapOpenClawBridgeApi(options.OpenClaw.InternalBridge.RoutePath);
+    await app.RunAsync(options.OpenClaw.InternalBridge.Url);
+    return;
+}
 
 var host = Host.CreateDefaultBuilder(args)
     .ConfigureAppConfiguration((context, config) =>
@@ -30,7 +50,7 @@ var host = Host.CreateDefaultBuilder(args)
 
 if (args.Length == 0)
 {
-    Console.WriteLine("Provide a user message as the first argument.");
+    Console.WriteLine("Provide a user message as the first argument, or run with 'serve' to start the internal bridge API.");
     return;
 }
 

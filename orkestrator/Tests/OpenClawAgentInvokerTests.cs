@@ -17,8 +17,12 @@ public sealed class OpenClawAgentInvokerTests
         {
             OpenClaw = new OpenClawOptions
             {
-                EndpointPath = "/bridge/send",
-                SessionKey = "agent:moderator:telegram:group:test"
+                SessionKey = "agent:moderator:telegram:group:test",
+                InternalBridge = new InternalBridgeOptions
+                {
+                    Url = "http://127.0.0.1:5187",
+                    RoutePath = "/internal/openclaw/bridge/invoke"
+                }
             }
         });
 
@@ -38,8 +42,12 @@ public sealed class OpenClawAgentInvokerTests
         {
             OpenClaw = new OpenClawOptions
             {
-                EndpointPath = "/bridge/send",
-                SessionKey = "agent:arist:telegram:group:test"
+                SessionKey = "agent:arist:telegram:group:test",
+                InternalBridge = new InternalBridgeOptions
+                {
+                    Url = "http://127.0.0.1:5187",
+                    RoutePath = "/internal/openclaw/bridge/invoke"
+                }
             }
         });
 

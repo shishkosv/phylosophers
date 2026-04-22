@@ -18,26 +18,33 @@ public sealed class OpenClawHttpBridge : IOpenClawBridge
     {
         _httpClient = httpClient;
         _options = options.Value;
-        _httpClient.BaseAddress = new Uri(_options.OpenClaw.BaseUrl);
+        _httpClient.BaseAddress = new Uri(_options.OpenClaw.InternalBridge.Url);
         _httpClient.Timeout = TimeSpan.FromSeconds(_options.OpenClaw.TimeoutSeconds);
     }
 
     public Task<string?> SendAgentPromptAsync(AgentProfile profile, string prompt, CancellationToken cancellationToken = default)
-        => PostPromptAsync(prompt, cancellationToken);
+        => PostPromptAsync(new OpenClawBridgeRequest
+        {
+            Kind = "agent",
+            Profile = profile,
+            Prompt = prompt,
+            SessionKey = _options.OpenClaw.SessionKey,
+            TimeoutSeconds = _options.OpenClaw.TimeoutSeconds
+        }, cancellationToken);
 
     public Task<string?> SendModeratorPromptAsync(string prompt, CancellationToken cancellationToken = default)
-        => PostPromptAsync(prompt, cancellationToken);
-
-    private async Task<string?> PostPromptAsync(string prompt, CancellationToken cancellationToken)
-    {
-        var payload = new
+        => PostPromptAsync(new OpenClawBridgeRequest
         {
-            sessionKey = _options.OpenClaw.SessionKey,
-            message = prompt,
-            timeoutSeconds = _options.OpenClaw.TimeoutSeconds
-        };
+            Kind = "moderator",
+            Profile = AgentProfile.Moderator,
+            Prompt = prompt,
+            SessionKey = _options.OpenClaw.SessionKey,
+            TimeoutSeconds = _options.OpenClaw.TimeoutSeconds
+        }, cancellationToken);
 
-        using var request = new HttpRequestMessage(HttpMethod.Post, _options.OpenClaw.EndpointPath)
+    private async Task<string?> PostPromptAsync(OpenClawBridgeRequest payload, CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, _options.OpenClaw.InternalBridge.RoutePath)
         {
             Content = new StringContent(JsonSerializer.Serialize(payload, JsonOptions), Encoding.UTF8, "application/json")
         };
@@ -49,6 +56,16 @@ public sealed class OpenClawHttpBridge : IOpenClawBridge
 
         using var response = await _httpClient.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
-        return await response.Content.ReadAsStringAsync(cancellationToken);
+        var content = await response.Content.ReadAsStringAsync(cancellationToken);
+
+        try
+        {
+            var bridgeResponse = JsonSerializer.Deserialize<OpenClawBridgeResponse>(content, JsonOptions);
+            return bridgeResponse?.Raw ?? bridgeResponse?.Reply ?? content;
+        }
+        catch (JsonException)
+        {
+            return content;
+        }
     }
 }
