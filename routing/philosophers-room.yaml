@@ -1,117 +1,74 @@
 room:
-  name: philosophers-room
-  channel: telegram
-  defaultRouter: moderator
-  architecture: single_visible_moderator_bot
-
-replyBehavior:
-  defaultMode: reply_to_current
-  policy: require-reply-tag-for-message-anchored-replies
-
-channelPolicy:
-  telegram:
-    replyByDefault: true
-    shortParagraphs: true
-    avoidLongBlocks: true
-    preferSingleFocusedReply: true
+  id: philosophers-room
+  mode: moderated_multi_agent
+  defaultVisibleBots:
+    - freud
+    - aristotle
+    - marcus
+  moderator:
+    enabled: true
+    internalOnly: true
+    authority: final
 
 routing:
-  classifyIncomingAs:
-    - explicitly_routed_to_freud
-    - explicitly_routed_to_marcus
-    - explicitly_routed_to_aristotle
-    - explicitly_routed_to_all_philosophers
-    - directed_to_another_human
-    - requires_moderator_summary
-    - no_response_needed
-  ownership:
-    directQuestionOwnsTurn: false
-    directAddressOwnsTurn: false
-    explicitRoutingOwnsTurn: true
-    selectedSpeakerAnswersNaturally: false
-    rules:
-      - direct address alone does not grant a philosopher the turn
-      - philosophers reply only when explicitly selected by room-routing logic
-      - suppress all unselected philosophers
-      - ownership exists only after moderator or room-routing explicitly selects a speaker
-  speakerSelection:
-    routerFirst: moderator
-    default: silence_unless_room_router_selects
-    socialDefault: one_philosopher_at_a_time
-    suppressUnselectedPhilosophers: true
-    antiPanelBias: strong
-    chooseTwoOnlyWhen:
-      - explicit comparison request
-      - moderator explicitly selects two voices
-    chooseAllThreeOnlyWhen:
-      - explicit panel request
-      - moderator explicitly selects all three voices
-  pairings:
-    - speakers: [freud, marcus]
-      useWhen: inner conflict versus discipline
-    - speakers: [freud, aristotle]
-      useWhen: motive versus virtue
-    - speakers: [marcus, aristotle]
-      useWhen: control versus flourishing
+  requireExplicitSelection: true
+  directMentionDoesNotAuthorizeReply: true
+  directQuestionDoesNotAuthorizeReply: true
+  maxPhilosopherRepliesPerUserTurn: 2
+  allowSameSpeakerTwice: false
+  defaultSequence:
+    - selected_philosopher
+    - optional_contrast_philosopher
+    - stop_or_summary
+  silencePolicy:
+    preferSilenceOverRedundancy: true
+    remainSilentIfNoDistinctValue: true
 
-speakerMapping:
-  freud: { useFor: [sabotage, insecurity, jealousy, love, attachment, shame, recurring_conflict, irrational_reactions, dreams, contradictions] }
-  marcus: { useFor: [anxiety, uncertainty, anger, offense, stress, fear_of_outcome, discipline, patience, dealing_with_other_people] }
-  aristotle: { useFor: [friendship, justice, honesty, habit_building, ambition, courage, moderation, decision_making, practical_flourishing] }
-
-moderation:
-  humanPriority: true
-  strictModerator: true
-  hardSilenceBias: true
-  rules:
-    - moderator is the only visible bot in the Telegram room
-    - moderator decides who answers, if anyone
-    - philosophers do not self-route from direct address or direct question
-    - by default produce no philosopher reply unless room-routing explicitly selects one
-    - produce one reply in one selected philosopher voice when room-routing selects a speaker
-    - use two voices only when explicit comparison is requested or moderator explicitly selects two voices
-    - use three voices only for explicit panel requests or moderator explicit selection
-    - avoid agent-only loops, rebuttal chains, overlap, and long speeches
+contrastMap:
+  freud:
+    preferredNext:
+      - aristotle
+      - marcus
+  aristotle:
+    preferredNext:
+      - freud
+      - marcus
+  marcus:
+    preferredNext:
+      - freud
+      - aristotle
 
 repetitionControl:
-  check:
-    - core_point_already_made
-    - distinct_angle_available
-    - better_than_silence
-  ifMostlyRepetitive:
-    - shorten_drastically
-    - shift_to_distinct_nuance
-    - remain_silent_only_if_not_explicitly_selected
-
-cooldowns:
   enabled: true
-  groupChat:
-    sameSpeakerMinGapTurns: 2
-    bypassWhen: [explicitly_selected, moderator_reselects]
+  compareLastMessages: 3
+  maxSemanticSimilarity: 0.72
+  ifTooSimilar:
+    - shorten
+    - refine
+    - or_remain_silent
 
-responseShape:
-  default: [one_claim, one_distinction, one_practical_conclusion]
-  perSpeaker:
-    freud: { prefer: [one_core_interpretation, one_short_reason, optional_one_question], avoid: [long_dense_blocks, layered_speculation] }
-    marcus: { prefer: [one_stoic_distinction, one_practical_landing], avoid: [abstract_drift, theatrical_stoicism] }
-    aristotle: { prefer: [one_clear_distinction, one_practical_implication], avoid: [abstract_lecture, unnecessary_categorization] }
+caps:
+  crowdedChatWords: 70
+  normalWords: 110
+  hardMaxWords: 140
+  moderatorSummaryWords: 90
 
-responseCaps:
-  freud: 80
-  marcus: 80
-  aristotle: 80
-  moderator_summary: 90
+summary:
+  enabled: true
+  triggerAfterPhilosopherReplies: 2
+  include:
+    - main_issue
+    - strongest_contrast
+    - practical_takeaway
 
-summaries:
-  produceWhen: [long, tangled, repetitive, asked_for, topic_drift]
-  include: [main_issue, strongest_contrast, practical_takeaway]
+debate:
+  enabled: true
+  steelmanBeforeCritique: true
+  noStrawman: true
+  identifyAgreementBeforeDisagreement: true
+  stopCircularRepetition: true
 
-turnDiscipline:
-  avoid: [all_agents_every_turn, repeated_rebuttal_chains, long_speeches, noisy_overlap, old_subthreads_after_topic_shift]
-
-languagePolicy:
-  modernReadable: true
-  avoid: [archaic_theatrical_language, parody_of_historical_voice]
-
-observability:
-  logPerReply: [selected_speaker_reason, suppressed_speakers_and_why, topic_classification, explicitly_routed_or_not, question_owner, reply_to_current_requested_or_not, telegram_reply_metadata_sent_or_not, duplicate_suppression_applied_or_not, cooldown_bypassed_or_not]
+telegram:
+  requireMention: false
+  privacyMode: false
+  useReplyToCurrent: false
