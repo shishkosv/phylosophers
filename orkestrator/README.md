@@ -45,8 +45,12 @@ This is file-backed durable state inside the workspace memory area.
 
 ## Current integration state
 
-This environment does not have `dotnet` installed, so the code could not be compiled here.
-The source tree is complete, but you must build and run it on a machine with .NET 8 SDK.
+The project now builds and runs on .NET 8.
+
+Important OpenClaw note:
+- the previously assumed `/api/sessions/send` endpoint does not exist on the local gateway tested here
+- `OpenClawAgentInvoker` was updated to use an explicit configurable HTTP endpoint instead of hard-coding a guessed route
+- if no real endpoint is configured, the project can still use a prompt-echo fallback for smoke tests
 
 ## Build
 
@@ -62,12 +66,37 @@ dotnet build -c Release
 dotnet run -- "Why do people sabotage themselves even when they know better?"
 ```
 
+## OpenClaw configuration
+
+`appsettings.json` now supports:
+
+```json
+{
+  "Orchestrator": {
+    "OpenClaw": {
+      "BaseUrl": "http://localhost:18789",
+      "SessionKey": "",
+      "EndpointPath": "",
+      "BearerToken": "",
+      "EnablePromptEchoFallback": true,
+      "TimeoutSeconds": 60
+    }
+  }
+}
+```
+
+Meaning:
+- `EndpointPath`: real HTTP path for your own OpenClaw-facing adapter or gateway extension
+- `SessionKey`: target OpenClaw session key
+- `BearerToken`: optional bearer token if your adapter requires auth
+- `EnablePromptEchoFallback`: keep `true` for local smoke tests, set `false` for strict production mode
+
 ## Production adjustments still recommended
 
 Before deploying, I recommend these upgrades:
 
 1. replace `TelegramPublisher` placeholder with real Telegram Bot API publishing
-2. replace `OpenClawAgentInvoker` endpoint assumptions with your actual OpenClaw session/message API
+2. provide a real OpenClaw adapter endpoint and set `OpenClaw.EndpointPath` to it
 3. harden moderator JSON parsing with a dedicated DTO and validation
 4. add structured prompt builders per profile instead of the simple generic prompt composer
 5. add inbound webhook controller or polling worker

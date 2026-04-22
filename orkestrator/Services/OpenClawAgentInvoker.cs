@@ -1,3 +1,4 @@
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
@@ -29,23 +30,13 @@ public sealed class OpenClawAgentInvoker : IAgentInvoker
         var prompt = BuildAgentPrompt(profile, history, userMessage, maxWords);
         _logger.LogInformation("Invoking agent {Profile}", profile);
 
-        if (string.IsNullOrWhiteSpace(_options.OpenClaw.SessionKey))
+        if (!IsRemoteInvocationConfigured())
         {
-            return $"[{profile}] {prompt}";
+            return BuildFallbackResponse(profile, prompt);
         }
 
-        var payload = new
-        {
-            sessionKey = _options.OpenClaw.SessionKey,
-            message = prompt,
-            timeoutSeconds = _options.OpenClaw.TimeoutSeconds
-        };
-
-        using var content = new StringContent(JsonSerializer.Serialize(payload, JsonOptions), Encoding.UTF8, "application/json");
-        using var response = await _httpClient.PostAsync("/api/sessions/send", content, cancellationToken);
-        response.EnsureSuccessStatusCode();
-        var responseText = await response.Content.ReadAsStringAsync(cancellationToken);
-        return responseText;
+        var responseText = await PostPromptAsync(prompt, cancellationToken);
+        return ExtractAssistantText(responseText) ?? responseText;
     }
 
     public async Task<RouteDecision> InvokeModeratorAsync(IReadOnlyList<RoomMessage> history, RoomMessage userMessage, CancellationToken cancellationToken = default)
@@ -53,17 +44,61 @@ public sealed class OpenClawAgentInvoker : IAgentInvoker
         var prompt = BuildModeratorPrompt(history, userMessage);
         _logger.LogInformation("Invoking moderator selector");
 
-        if (string.IsNullOrWhiteSpace(_options.OpenClaw.SessionKey))
+        if (!IsRemoteInvocationConfigured())
         {
-            return new RouteDecision
-            {
-                Action = RouteAction.SelectSpeaker,
-                Speaker = GuessSpeaker(userMessage.Text),
-                Reason = "Fallback local routing",
-                MaxWords = 110
-            };
+            return BuildFallbackDecision(userMessage.Text, "Fallback local routing");
         }
 
+        var responseText = await PostPromptAsync(prompt, cancellationToken);
+
+        try
+        {
+            var decision = JsonSerializer.Deserialize<RouteDecision>(responseText, JsonOptions);
+            return decision ?? new RouteDecision { Action = RouteAction.Silence, Reason = "Empty moderator decision" };
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogWarning(ex, "Failed to parse moderator response as RouteDecision. Falling back to local selector.");
+            return BuildFallbackDecision(userMessage.Text, "Moderator response parse failure fallback");
+        }
+    }
+
+    private bool IsRemoteInvocationConfigured()
+    {
+        return !string.IsNullOrWhiteSpace(_options.OpenClaw.EndpointPath)
+            && !string.IsNullOrWhiteSpace(_options.OpenClaw.SessionKey);
+    }
+
+    private string BuildFallbackResponse(AgentProfile profile, string prompt)
+    {
+        if (_options.OpenClaw.EnablePromptEchoFallback)
+        {
+            return $"[{profile}] {prompt}";
+        }
+
+        throw new InvalidOperationException(
+            "OpenClaw agent invocation is not configured. Set Orchestrator:OpenClaw:EndpointPath and SessionKey, or enable EnablePromptEchoFallback for local smoke tests.");
+    }
+
+    private RouteDecision BuildFallbackDecision(string userText, string reason)
+    {
+        if (!_options.OpenClaw.EnablePromptEchoFallback)
+        {
+            throw new InvalidOperationException(
+                "OpenClaw moderator invocation is not configured. Set Orchestrator:OpenClaw:EndpointPath and SessionKey, or enable EnablePromptEchoFallback for local smoke tests.");
+        }
+
+        return new RouteDecision
+        {
+            Action = RouteAction.SelectSpeaker,
+            Speaker = GuessSpeaker(userText),
+            Reason = reason,
+            MaxWords = 110
+        };
+    }
+
+    private async Task<string> PostPromptAsync(string prompt, CancellationToken cancellationToken)
+    {
         var payload = new
         {
             sessionKey = _options.OpenClaw.SessionKey,
@@ -71,26 +106,56 @@ public sealed class OpenClawAgentInvoker : IAgentInvoker
             timeoutSeconds = _options.OpenClaw.TimeoutSeconds
         };
 
-        using var content = new StringContent(JsonSerializer.Serialize(payload, JsonOptions), Encoding.UTF8, "application/json");
-        using var response = await _httpClient.PostAsync("/api/sessions/send", content, cancellationToken);
+        using var request = new HttpRequestMessage(HttpMethod.Post, _options.OpenClaw.EndpointPath)
+        {
+            Content = new StringContent(JsonSerializer.Serialize(payload, JsonOptions), Encoding.UTF8, "application/json")
+        };
+
+        if (!string.IsNullOrWhiteSpace(_options.OpenClaw.BearerToken))
+        {
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _options.OpenClaw.BearerToken);
+        }
+
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
-        var responseText = await response.Content.ReadAsStringAsync(cancellationToken);
+        return await response.Content.ReadAsStringAsync(cancellationToken);
+    }
+
+    private static string? ExtractAssistantText(string responseText)
+    {
+        if (string.IsNullOrWhiteSpace(responseText))
+        {
+            return responseText;
+        }
 
         try
         {
-            var decision = JsonSerializer.Deserialize<RouteDecision>(responseText, JsonOptions);
-            return decision ?? new RouteDecision { Action = RouteAction.Silence, Reason = "Empty moderator decision" };
-        }
-        catch
-        {
-            return new RouteDecision
+            using var document = JsonDocument.Parse(responseText);
+            var root = document.RootElement;
+
+            if (root.ValueKind == JsonValueKind.Object)
             {
-                Action = RouteAction.SelectSpeaker,
-                Speaker = GuessSpeaker(userMessage.Text),
-                Reason = "Moderator response parse failure fallback",
-                MaxWords = 110
-            };
+                if (root.TryGetProperty("reply", out var reply) && reply.ValueKind == JsonValueKind.String)
+                {
+                    return reply.GetString();
+                }
+
+                if (root.TryGetProperty("message", out var message) && message.ValueKind == JsonValueKind.String)
+                {
+                    return message.GetString();
+                }
+
+                if (root.TryGetProperty("text", out var text) && text.ValueKind == JsonValueKind.String)
+                {
+                    return text.GetString();
+                }
+            }
         }
+        catch (JsonException)
+        {
+        }
+
+        return null;
     }
 
     private static AgentProfile GuessSpeaker(string text)

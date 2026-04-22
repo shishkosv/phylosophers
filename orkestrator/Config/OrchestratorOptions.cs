@@ -16,6 +16,9 @@ public sealed class OpenClawOptions
 {
     public string BaseUrl { get; set; } = "http://localhost:18789";
     public string SessionKey { get; set; } = string.Empty;
+    public string EndpointPath { get; set; } = string.Empty;
+    public string BearerToken { get; set; } = string.Empty;
+    public bool EnablePromptEchoFallback { get; set; }
     public int TimeoutSeconds { get; set; } = 60;
 }
 
